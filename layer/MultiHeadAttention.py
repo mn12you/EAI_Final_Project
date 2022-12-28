@@ -6,6 +6,7 @@ from pprint import pprint
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
+from layer.Other import scaled_dot_product_attention
 class MultiHeadAttention(tf.keras.layers.Layer):
   # 在初始的時候建立一些必要參數
   def __init__(self, d_model, num_heads):

@@ -7,7 +7,8 @@ from pprint import pprint
 
 import tensorflow as tf
 import tensorflow_datasets as tfds
-
+from layer.Other import positional_encoding
+from layer.EncoderLayer import EncoderLayer
 class Encoder(tf.keras.layers.Layer):
   # Encoder 的初始參數除了本來就要給 EncoderLayer 的參數還多了：
   # - num_layers: 決定要有幾個 EncoderLayers, 前面影片中的 `N`

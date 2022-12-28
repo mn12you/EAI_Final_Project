@@ -6,6 +6,10 @@ from pprint import pprint
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
+from layer.DecoderLayer import DecoderLayer
+
+from layer.Other import positional_encoding
+
 class Decoder(tf.keras.layers.Layer):
   # 初始參數跟 Encoder 只差在用 `target_vocab_size` 而非 `inp_vocab_size`
   def __init__(self, num_layers, d_model, num_heads, dff, target_vocab_size, 

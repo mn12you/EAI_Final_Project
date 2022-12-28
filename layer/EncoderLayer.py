@@ -5,7 +5,8 @@ from pprint import pprint
 
 import tensorflow as tf
 import tensorflow_datasets as tfds
-
+from layer.MultiHeadAttention import MultiHeadAttention
+from layer.Other import point_wise_feed_forward_network
 class EncoderLayer(tf.keras.layers.Layer):
   # Transformer 論文內預設 dropout rate 為 0.1
   def __init__(self, d_model, num_heads, dff, rate=0.1):

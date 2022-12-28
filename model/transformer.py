@@ -8,7 +8,7 @@ from pprint import pprint
 import tensorflow as tf
 import tensorflow_datasets as tfds
 from  layer.Encoder import Encoder
-from  layer.Decoder import decoder
+from  layer.Decoder import Decoder
 
 class Transformer(tf.keras.Model):
   # 初始參數包含 Encoder & Decoder 都需要超參數以及中英字典數目
