@@ -10,7 +10,7 @@ import tensorflow_datasets as tfds
 
 from model.transformer import Transformer
 from train.CustomScheduule import CustomSchedule
-from train.loss_function import loss_function
+from train.loss_function2 import loss_function
 from train.mask import create_masks
 
 
@@ -21,6 +21,7 @@ output_dir = "nmt"
 en_vocab_file = os.path.join(output_dir, "en_vocab")
 zh_vocab_file = os.path.join(output_dir, "zh_vocab")
 checkpoint_path = os.path.join(output_dir, "checkpoints")
+checkpoint_path_t = os.path.join(output_dir, "checkpoints")
 log_dir = os.path.join(output_dir, 'logs')
 download_dir = "tensorflow-datasets/downloads"
 
@@ -145,21 +146,32 @@ print('-' * 20)
 print("中文索引序列的 batch")
 print(zh_batch)
 
-num_layers = 6
-num_layers_2 = 24
+num_layers = 1
+num_layers_2=1
 d_model = 128
 dff = 512
 num_heads = 8
 train_perc=20
 
+num_layers_t = 6
+num_layers_2_t=6
+d_model_t = 128
+dff_t = 512
+num_heads_t = 8
+train_perc_t=20
+
+
 input_vocab_size = subword_encoder_en.vocab_size + 2
 target_vocab_size = subword_encoder_zh.vocab_size + 2
 dropout_rate = 0.1  # 預設值
 
-transformer = Transformer(num_layers,num_layers_2,d_model, num_heads, dff,
+transformer = Transformer(num_layers,num_layers_2, d_model, num_heads, dff,
                           input_vocab_size, target_vocab_size, dropout_rate)
 
-print(f"""這個 Transformer 有 {num_layers} 層 Encoder / {num_layers_2} 層Decoder layers
+transformer_teacher = Transformer(num_layers_t,num_layers_2_t, d_model_t, num_heads_t, dff_t,
+                          input_vocab_size, target_vocab_size, dropout_rate)
+
+print(f"""這個 Transformer 有 {num_layers} 層 Encoder / Decoder layers
 d_model: {d_model}
 num_heads: {num_heads}
 dff: {dff}
@@ -179,18 +191,25 @@ train_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(
 
 
 # 方便比較不同實驗/ 不同超參數設定的結果
-run_id = f"{num_layers}Decoder_layers_{num_layers_2}Encoder_layers_{d_model}d_{num_heads}heads_{dff}dff_{train_perc}train_perc"
+run_id = f"{num_layers}layers_{d_model}d_{num_heads}heads_{dff}dff_{train_perc}train_perc"
 checkpoint_path = os.path.join(checkpoint_path, run_id)
-log_dir = os.path.join(log_dir, run_id)
+
+run_id_t = f"{num_layers_t}layers_{d_model_t}d_{num_heads_t}heads_{dff_t}dff_{train_perc_t}train_perc"
+checkpoint_path_t = os.path.join(checkpoint_path_t, run_id_t)
+log_dir = os.path.join(log_dir, run_id_t)
 
 # tf.train.Checkpoint 可以幫我們把想要存下來的東西整合起來，方便儲存與讀取
 # 一般來說你會想存下模型以及 optimizer 的狀態
 ckpt = tf.train.Checkpoint(transformer=transformer,
                            optimizer=optimizer)
 
+ckpt_t = tf.train.Checkpoint(transformer=transformer_teacher,
+                           optimizer=optimizer)
+
 # ckpt_manager 會去 checkpoint_path 看有沒有符合 ckpt 裡頭定義的東西
 # 存檔的時候只保留最近 5 次 checkpoints，其他自動刪除
 ckpt_manager = tf.train.CheckpointManager(ckpt, checkpoint_path, max_to_keep=5)
+ckpt_manager_t = tf.train.CheckpointManager(ckpt_t, checkpoint_path_t, max_to_keep=5)
 
 # 如果在 checkpoint 路徑上有發現檔案就讀進來
 if ckpt_manager.latest_checkpoint:
@@ -203,6 +222,14 @@ else:
   last_epoch = 0
   print("沒找到 checkpoint，從頭訓練。")
 
+if ckpt_manager_t.latest_checkpoint:
+  ckpt_t.restore(ckpt_manager_t.latest_checkpoint)
+  
+  print(f'已讀取最新的teacher checkpoint')
+else:
+  print(checkpoint_path_t)
+  print("沒找到teacher checkpoint，從頭訓練。")
+
 @tf.function  # 讓 TensorFlow 幫我們將 eager code 優化並加快運算
 def train_step(inp, tar):
   # 前面說過的，用去尾的原始序列去預測下一個字的序列
@@ -214,14 +241,20 @@ def train_step(inp, tar):
   
   # 紀錄 Transformer 的所有運算過程以方便之後做梯度下降
   with tf.GradientTape() as tape:
-    # 注意是丟入 `tar_inp` 而非 `tar`。記得將 `training` 參數設定為 True
+    # 注意是丟入 tar_inp 而非 `tar`。記得將 training 參數設定為 True
     predictions, _ = transformer(inp, tar_inp, 
                                  True, 
                                  enc_padding_mask, 
                                  combined_mask, 
                                  dec_padding_mask)
+    
+    predictions_teacher, _ = transformer_teacher(inp, tar_inp, 
+                                 False, 
+                                 enc_padding_mask, 
+                                 combined_mask, 
+                                 dec_padding_mask)
     # 跟影片中顯示的相同，計算左移一個字的序列跟模型預測分佈之間的差異，當作 loss
-    loss = loss_function(tar_real, predictions)
+    loss = loss_function(tar_real, predictions, predictions_teacher, alpha=0.5)
 
   # 取出梯度並呼叫前面定義的 Adam optimizer 幫我們更新 Transformer 裡頭可訓練的參數
   gradients = tape.gradient(loss, transformer.trainable_variables)    

@@ -12,14 +12,14 @@ from  layer.Decoder import Decoder
 
 class Transformer(tf.keras.Model):
   # 初始參數包含 Encoder & Decoder 都需要超參數以及中英字典數目
-  def __init__(self, num_layers, d_model, num_heads, dff, input_vocab_size, 
+  def __init__(self, num_layers,num_layers_2, d_model, num_heads, dff, input_vocab_size, 
                target_vocab_size, rate=0.1):
     super(Transformer, self).__init__()
 
     self.encoder = Encoder(num_layers, d_model, num_heads, dff, 
                            input_vocab_size, rate)
 
-    self.decoder = Decoder(num_layers, d_model, num_heads, dff, 
+    self.decoder = Decoder(num_layers_2, d_model, num_heads, dff, 
                            target_vocab_size, rate)
     # 這個 FFN 輸出跟中文字典一樣大的 logits 數，等通過 softmax 就代表每個中文字的出現機率
     self.final_layer = tf.keras.layers.Dense(target_vocab_size)
