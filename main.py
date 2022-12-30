@@ -145,8 +145,8 @@ print('-' * 20)
 print("中文索引序列的 batch")
 print(zh_batch)
 
-num_layers = 6
-num_layers_2 = 24
+num_layers = 1
+num_layers_2 = 1
 d_model = 128
 dff = 512
 num_heads = 8
@@ -233,7 +233,7 @@ def train_step(inp, tar):
 
 
 # 定義我們要看幾遍數據集
-EPOCHS = 50
+EPOCHS = 100
 print(f"此超參數組合的 Transformer 已經訓練 {last_epoch} epochs。")
 print(f"剩餘 epochs：{min(0, last_epoch - EPOCHS)}")
 
